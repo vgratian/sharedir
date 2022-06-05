@@ -103,10 +103,18 @@ func serve(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if inf.IsDir() {
-		serveDir(w, sp)
+		if recursive || sp.abs == root {
+			serveDir(w, sp)
+			return
+		}
 	} else {
-		serveFile(w, sp)
+		if recursive || filepath.Dir(sp.abs) == root {
+			serveFile(w, sp)
+			return
+		}
 	}
+
+	serveFailure(w, http.StatusUnauthorized, "unauthorized")
 }
 
 // Write HTTP-status-code indicating failure and the plain-text
