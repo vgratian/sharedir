@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html>
+	<head>
+		<meta charset="utf-8">
+		<title>sharedir: {{ .DirName }}</title>
+		<link rel="icon" type="image/x-icon" href="~favicon.ico">
+		<style type="text/css">
+			html * { color: #323232 !important; }
+			table { text-align: justify; }
+		</style>
+	</head>
+	<body>
+		<h2>index of {{ .DirName }}</h2>
+		<table width="85%">
+			<thead>
+				<th>filename</th>
+				<th>modified</th>
+				<th align="right">size</th>
+			</thead>
+			<tbody>
+				{{range .Content -}}
+				<tr>
+					<td><a href="/{{ href .Name }}">{{ .Name }}</a></td>
+					<td>{{ ttos .Info.ModTime }}</td>
+					<td align="right">{{if .IsDir }}-{{else}}{{ .Info.Size }}{{end}}</td>
+				</tr>
+				{{- end}}
+			</tbody>
+		</table>
+	</body>
+</html>
