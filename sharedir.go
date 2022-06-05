@@ -16,14 +16,14 @@ import (
 const templateFp = "template.html"
 
 var (
-	root string				 // root of shared directory
-	recursive bool = false   // recursive mode
-	home string              // home directory of program
+	root      string         // root of shared directory
+	recursive bool   = false // recursive mode
+	home      string         // home directory of program
 )
 
 type safePath struct {
-	abs string		// absolute path (unvisible to clients)
-	rel string		// path relative to root (visible)
+	abs string // absolute path (unvisible to clients)
+	rel string // path relative to root (visible)
 }
 
 // Check if the requested path is admissible. If so, return
@@ -32,7 +32,7 @@ type safePath struct {
 // TODO handle symlinks and non-regular files.
 func parseSafePath(raw string) *safePath {
 	var (
-		sp *safePath
+		sp  *safePath
 		err error
 	)
 
@@ -44,7 +44,7 @@ func parseSafePath(raw string) *safePath {
 		return nil
 	}
 
-	if ! strings.HasPrefix(sp.abs, root) {
+	if !strings.HasPrefix(sp.abs, root) {
 		log.Print("     not in root")
 		return nil
 	}
@@ -79,7 +79,7 @@ func guessMimeType(fp string) string {
 // to the other functions.
 func serve(w http.ResponseWriter, r *http.Request) {
 	var (
-		sp *safePath
+		sp  *safePath
 		err error
 		inf os.FileInfo
 	)
@@ -120,7 +120,7 @@ func serveFailure(w http.ResponseWriter, code int, message string) {
 func serveFile(w http.ResponseWriter, p *safePath) {
 
 	var (
-		err error
+		err  error
 		size int
 		data []byte
 	)
@@ -151,15 +151,15 @@ func serveIcon(w http.ResponseWriter) {
 
 func serveDir(w http.ResponseWriter, p *safePath) {
 
-	var	(
-		err	error
-		tmp	*template.Template
+	var (
+		err error
+		tmp *template.Template
 	)
 
 	data := struct {
 		DirName string
 		Content []os.DirEntry
-	}{ DirName: "/"+p.rel }
+	}{DirName: "/" + p.rel}
 
 	if data.Content, err = os.ReadDir(p.abs); err != nil {
 		log.Fatalf("read dir: %v", err)
@@ -167,10 +167,10 @@ func serveDir(w http.ResponseWriter, p *safePath) {
 
 	tmp, err = template.New(templateFp).Funcs(
 		template.FuncMap{
-			"ttos" : func(t time.Time) string {
+			"ttos": func(t time.Time) string {
 				return t.Format("2006-01-02 15:04:05")
 			},
-			"href" : func(n string) string {
+			"href": func(n string) string {
 				if p.rel == "" {
 					return n
 				}
@@ -186,9 +186,8 @@ func serveDir(w http.ResponseWriter, p *safePath) {
 		log.Fatalf("execute template: %v", err)
 	}
 
-	w.Header().Set("Content-Type", "text/html; charset=utf-8") 
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 }
-
 
 const usage = `Quickly and safely share content of a directory over HTTP.
 
@@ -207,12 +206,12 @@ func main() {
 	var (
 		mux  *http.ServeMux
 		srv  http.Server
-		err	 error
+		err  error
 		addr string
 	)
 
 	addr = ":2022"
-	
+
 	if len(os.Args) > 1 {
 		a := os.Args[1]
 		if a == "help" || a == "--help" || a == "-h" {
@@ -225,14 +224,14 @@ func main() {
 			a = os.Args[i]
 			if a == "-r" {
 				recursive = true
-				i+=1
+				i += 1
 				continue
 			}
 
 			if a == "-a" {
 				if i+1 < len(os.Args) {
 					addr = os.Args[i+1]
-					i+=2
+					i += 2
 				} else {
 					fmt.Printf("missing argument for '-a'")
 					os.Exit(1)
@@ -241,7 +240,7 @@ func main() {
 			}
 
 			root = os.Args[i]
-			i+=1
+			i += 1
 		}
 	}
 
