@@ -262,8 +262,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	log.Printf("home from executable: [%s]", home)
-
 	if home, err = filepath.EvalSymlinks(home); err != nil {
 		fmt.Println(err)
 		os.Exit(1)
