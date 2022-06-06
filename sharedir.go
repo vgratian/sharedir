@@ -36,8 +36,11 @@ func parseSafePath(raw string) *safePath {
 		err error
 	)
 
+	raw = strings.TrimPrefix(raw, "/")
+	raw = strings.ReplaceAll(raw, "%20", " ")
+
 	sp = new(safePath)
-	sp.abs = filepath.Join(root, strings.TrimPrefix(raw, "/"))
+	sp.abs = filepath.Join(root, raw)
 
 	if sp.abs, err = filepath.Abs(sp.abs); err != nil {
 		log.Printf("     absolute path: %v", err)
