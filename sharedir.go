@@ -3,7 +3,6 @@ package main
 import (
 	"fmt"
 	"html/template"
-	"io/ioutil"
 	"log"
 	"mime"
 	"net/http"
@@ -136,7 +135,7 @@ func serveFile(w http.ResponseWriter, p *safePath) {
 		data []byte
 	)
 
-	if data, err = ioutil.ReadFile(p.abs); err != nil {
+	if data, err = os.ReadFile(p.abs); err != nil {
 		log.Printf("     read file [%s]: %v", p.abs, err)
 		serveFailure(w, http.StatusInternalServerError, "server error")
 		return
