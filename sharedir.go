@@ -2,6 +2,7 @@ package main
 
 import (
 	"fmt"
+	"html"
 	"html/template"
 	"log"
 	"mime"
@@ -36,7 +37,10 @@ func parseSafePath(raw string) *safePath {
 	)
 
 	raw = strings.TrimPrefix(raw, "/")
+	raw = html.UnescapeString(raw)
 	raw = strings.ReplaceAll(raw, "%20", " ")
+	raw = strings.ReplaceAll(raw, "%28", "(")
+	raw = strings.ReplaceAll(raw, "%29", ")")
 
 	sp = new(safePath)
 	sp.abs = filepath.Join(root, raw)
@@ -282,6 +286,8 @@ func main() {
 
 	mux = http.NewServeMux()
 	mux.HandleFunc("/", serve)
+	//handler := http.FileServer(http.Dir(root))
+	//mux.Handle("/", handler)
 	srv.Handler = mux
 	srv.Addr = addr
 
