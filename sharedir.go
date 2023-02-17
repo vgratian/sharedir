@@ -1,9 +1,11 @@
 package main
 
 import (
+	"archive/zip"
 	"fmt"
 	"html"
 	"html/template"
+	"io"
 	"log"
 	"mime"
 	"net/http"
@@ -13,7 +15,10 @@ import (
 	"time"
 )
 
-const templateFp = "template.html"
+const (
+	templateFp    = "template.html"
+	compressQuery = "?download=zip"
+)
 
 var (
 	root      string         // root of shared directory
@@ -22,8 +27,9 @@ var (
 )
 
 type safePath struct {
-	abs string // absolute path (unvisible to clients)
-	rel string // path relative to root (visible)
+	abs      string // absolute path (unvisible to clients)
+	rel      string // path relative to root (visible)
+	compress bool
 }
 
 // Check if the requested path is admissible. If so, return
@@ -36,13 +42,19 @@ func parseSafePath(raw string) *safePath {
 		err error
 	)
 
+	sp = new(safePath)
+
+	if strings.HasSuffix(raw, compressQuery) {
+		raw = strings.TrimSuffix(raw, compressQuery)
+		sp.compress = true
+	}
+
 	raw = strings.TrimPrefix(raw, "/")
 	raw = html.UnescapeString(raw)
 	raw = strings.ReplaceAll(raw, "%20", " ")
 	raw = strings.ReplaceAll(raw, "%28", "(")
 	raw = strings.ReplaceAll(raw, "%29", ")")
 
-	sp = new(safePath)
 	sp.abs = filepath.Join(root, raw)
 
 	if sp.abs, err = filepath.Abs(sp.abs); err != nil {
@@ -105,6 +117,14 @@ func serve(w http.ResponseWriter, r *http.Request) {
 	if inf, err = os.Stat(sp.abs); err != nil {
 		log.Printf("     stat target: %v", err)
 		serveFailure(w, http.StatusNotFound, "invalid path")
+		return
+	}
+
+	if inf.IsDir() && sp.compress {
+		if err := serveCompressed(w, sp); err != nil {
+			log.Printf("compress [%s]: %s", sp.abs, err.Error())
+			serveFailure(w, http.StatusBadRequest, "invalid path")
+		}
 		return
 	}
 
@@ -190,6 +210,9 @@ func serveDir(w http.ResponseWriter, p *safePath) {
 				}
 				return filepath.Join(p.rel, n)
 			},
+			"zref": func(n string) string {
+				return n + compressQuery
+			},
 		}).ParseFiles(filepath.Join(home, templateFp))
 
 	if err != nil {
@@ -201,6 +224,58 @@ func serveDir(w http.ResponseWriter, p *safePath) {
 	}
 
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+}
+
+func serveCompressed(w http.ResponseWriter, p *safePath) error {
+
+	// read files in target directory
+	directoryContent, err := os.ReadDir(p.abs)
+	if err != nil {
+		return err
+	}
+
+	// Create a new zip writer
+	zipWriter := zip.NewWriter(w)
+	defer zipWriter.Close()
+
+	var count int
+
+	// Open target files and create compressed files
+	for _, dirEntry := range directoryContent {
+
+		if dirEntry.IsDir() {
+			continue
+		}
+
+		originalFile, err := os.Open(filepath.Join(p.abs, dirEntry.Name()))
+		if err != nil {
+			return err
+		}
+		defer originalFile.Close()
+
+		compressedFile, err := zipWriter.Create(dirEntry.Name())
+		if err != nil {
+			return err
+		}
+
+		_, err = io.Copy(compressedFile, originalFile)
+		if err != nil {
+			return err
+		}
+		count += 1
+	}
+
+	var zipFilename string
+	if p.rel == "" {
+		zipFilename = "sharedir_rootdirectory.zip"
+	} else {
+		zipFilename = "sharedir_" + p.rel + ".zip"
+	}
+	w.Header().Set("Content-Disposition", `attachment; filename="`+zipFilename+`"`)
+	w.Header().Set("Content-Type", "application/zip")
+	log.Printf("     served %d compressed files in directory %s (%s)", count, p.rel, zipFilename)
+
+	return nil
 }
 
 const usage = `Quickly and safely share content of a directory over HTTP.
